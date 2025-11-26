@@ -1,36 +1,126 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Claude Prompt Viewer
+
+A web application to browse and visualize your AI coding assistant conversation history. Supports multiple CLI tools. Built with Next.js and TypeScript.
+
+## Supported Tools
+
+| Tool | Directory | Status |
+|------|-----------|--------|
+| **Claude Code** | `~/.claude/projects/` | Supported |
+| **Codex** (OpenAI) | `~/.codex/sessions/` | Supported |
+| **Code** (just-every) | `~/.code/sessions/` | Supported |
+
+## Features
+
+- **Multi-Provider Support**: Switch between different AI coding tools with bottom tab navigation
+- **Projects List**: View all projects organized by working directory
+- **Sessions Browser**: Browse all conversation sessions for each project
+- **Chat View**: Visualize conversations in a chat-style interface
+  - Assistant messages on the left, User messages on the right
+  - Collapsible messages (accordion style)
+  - Expandable "Thinking" blocks (Claude's reasoning)
+  - Expandable "Tool Calls" (commands executed)
+  - Tool Results display with syntax highlighting
+
+## How It Works
+
+Each supported tool stores conversation sessions locally in different formats. This app reads those files directly using Next.js Server Components, providing a unified interface to review past conversations.
+
+### Data Locations
+
+```
+~/.claude/
+├── projects/                          # Claude Code: by project
+│   └── -home-user-myproject/
+│       └── {uuid}.jsonl
+
+~/.codex/
+├── sessions/                          # Codex: by date
+│   └── 2025/11/26/
+│       └── rollout-{timestamp}-{uuid}.jsonl
+
+~/.code/
+├── sessions/                          # Code: by date
+│   └── 2025/10/31/
+│       └── rollout-{timestamp}-{uuid}.jsonl
+```
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- npm
+- At least one supported CLI tool installed with existing conversation history
+
+### Installation
 
 ```bash
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Production Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/
+│   ├── page.tsx                              # Redirect to default provider
+│   └── [provider]/
+│       ├── page.tsx                          # Projects list
+│       └── project/
+│           └── [projectId]/
+│               ├── page.tsx                  # Sessions list
+│               └── session/
+│                   └── [sessionId]/
+│                       ├── page.tsx          # Chat view (server)
+│                       └── ProviderChatView.tsx
+├── components/
+│   ├── ProviderTabs.tsx                      # Bottom navigation tabs
+│   └── ProviderChatMessage.tsx               # Message component
+├── lib/
+│   └── providers/
+│       ├── index.ts                          # Provider registry
+│       ├── claude-provider.ts                # Claude Code implementation
+│       └── codex-provider.ts                 # Codex & Code implementation
+└── types/
+    ├── claude.ts                             # Claude-specific types
+    └── providers.ts                          # Generic provider types
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Data**: Local filesystem (JSONL files)
 
-## Deploy on Vercel
+## Adding New Providers
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+To add support for a new CLI tool:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Create a new provider in `src/lib/providers/`
+2. Implement the `IProvider` interface from `src/types/providers.ts`
+3. Register it in `src/lib/providers/index.ts`
+
+## Limitations
+
+- Read-only: This is a viewer, not an editor
+- Local only: Reads from local directories on the machine running the server
+- No authentication: Anyone with access to the server can view all sessions
+
+## License
+
+MIT
