@@ -1,4 +1,4 @@
-# Claude Prompt Viewer
+# Session Prompt Viewer
 
 A web application to browse and visualize your AI coding assistant conversation history. Supports multiple CLI tools. Built with Next.js and TypeScript.
 
@@ -114,12 +114,6 @@ To add support for a new CLI tool:
 1. Create a new provider in `src/lib/providers/`
 2. Implement the `IProvider` interface from `src/types/providers.ts`
 3. Register it in `src/lib/providers/index.ts`
-
-## Limitations
-
-- Read-only: This is a viewer, not an editor
-- Local only: Reads from local directories on the machine running the server
-- No authentication: Anyone with access to the server can view all sessions
 
 ## License
 
