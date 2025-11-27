@@ -1,9 +1,10 @@
 import { IProvider, ProviderId, ProviderInfo } from "@/types/providers";
 import { claudeProvider } from "./claude-provider";
 import { codexProvider, codeProvider } from "./codex-provider";
+import { opencodeProvider } from "./opencode-provider";
 
 // All available providers
-const providers: IProvider[] = [claudeProvider, codexProvider, codeProvider];
+const providers: IProvider[] = [claudeProvider, codexProvider, codeProvider, opencodeProvider];
 
 // Get provider by ID
 export function getProvider(id: ProviderId): IProvider | undefined {
@@ -30,4 +31,4 @@ export async function getAvailableProviders(): Promise<ProviderInfo[]> {
 }
 
 // Export individual providers
-export { claudeProvider, codexProvider, codeProvider };
+export { claudeProvider, codexProvider, codeProvider, opencodeProvider };

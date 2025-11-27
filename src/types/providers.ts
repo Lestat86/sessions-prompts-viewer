@@ -1,6 +1,6 @@
 // Provider abstraction types
 
-export type ProviderId = "claude" | "codex" | "code";
+export type ProviderId = "claude" | "codex" | "code" | "opencode";
 
 export interface ProviderInfo {
   id: ProviderId;

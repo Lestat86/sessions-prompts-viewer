@@ -9,6 +9,7 @@ A web application to browse and visualize your AI coding assistant conversation 
 | **Claude Code** | `~/.claude/projects/` | Supported |
 | **Codex** (OpenAI) | `~/.codex/sessions/` | Supported |
 | **Code** (just-every) | `~/.code/sessions/` | Supported |
+| **OpenCode** | `~/.local/share/opencode/storage/` | Supported |
 
 ## Features
 
@@ -43,6 +44,13 @@ Each supported tool stores conversation sessions locally in different formats. T
 ├── sessions/                          # Code: by date
 │   └── 2025/10/31/
 │       └── rollout-{timestamp}-{uuid}.jsonl
+
+~/.local/share/opencode/
+├── storage/                           # OpenCode: JSON files
+│   ├── project/{hash}.json
+│   ├── session/{projectId}/{sessionId}.json
+│   ├── message/{sessionId}/{msgId}.json
+│   └── part/{msgId}/{partId}.json
 ```
 
 ## Getting Started
@@ -94,7 +102,8 @@ src/
 │   └── providers/
 │       ├── index.ts                          # Provider registry
 │       ├── claude-provider.ts                # Claude Code implementation
-│       └── codex-provider.ts                 # Codex & Code implementation
+│       ├── codex-provider.ts                 # Codex & Code implementation
+│       └── opencode-provider.ts              # OpenCode implementation
 └── types/
     ├── claude.ts                             # Claude-specific types
     └── providers.ts                          # Generic provider types
@@ -105,7 +114,7 @@ src/
 - **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
-- **Data**: Local filesystem (JSONL files)
+- **Data**: Local filesystem (JSONL/JSON files)
 
 ## Adding New Providers
 
