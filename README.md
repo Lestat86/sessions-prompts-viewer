@@ -1,4 +1,4 @@
-# Session Prompt Viewer
+# Prompt Session Viewer
 
 A web application to browse and visualize your AI coding assistant conversation history. Supports multiple CLI tools. Built with Next.js and TypeScript.
 
@@ -78,6 +78,47 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ```bash
 npm run build
 npm start
+```
+
+### Install as System Service (Linux)
+
+Run the app automatically at system startup using systemd:
+
+```bash
+# Install and start the service (default port: 8383)
+./scripts/install.sh
+
+# Or specify a custom port
+./scripts/install.sh 8080
+```
+
+The installer will:
+- Build the application
+- Create a systemd user service
+- Enable autostart at login
+- Start the service immediately
+- Configure local hostname `session-viewer.local` (requires sudo)
+
+**Access the app:**
+- http://localhost:8383
+- http://session-viewer.local:8383
+
+**Service Management:**
+
+```bash
+# Check status
+systemctl --user status prompt-session-viewer
+
+# Stop/Start/Restart
+systemctl --user stop prompt-session-viewer
+systemctl --user start prompt-session-viewer
+systemctl --user restart prompt-session-viewer
+
+# View logs
+journalctl --user -u prompt-session-viewer -f
+
+# Uninstall
+./scripts/uninstall.sh
 ```
 
 ## Project Structure
