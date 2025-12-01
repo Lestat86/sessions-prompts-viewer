@@ -35,7 +35,7 @@ interface ContentBlock {
   name?: string;
   id?: string;
   input?: Record<string, unknown>;
-  content?: string;
+  content?: string | ContentBlock[];
   is_error?: boolean;
   tool_use_id?: string;
 }
@@ -248,16 +248,34 @@ function parseClaudeMessage(entry: ClaudeSessionEntry): ProviderMessage {
     if (typeof entry.message.content === "string") {
       message.content = entry.message.content;
     } else if (Array.isArray(entry.message.content)) {
-      // Tool results from user
+      // Extract text content and tool results from user messages
+      const textParts: string[] = [];
       const toolResults: ToolResult[] = [];
+
       for (const block of entry.message.content) {
-        if (block.type === "tool_result" && block.tool_use_id) {
+        if (block.type === "text" && block.text) {
+          textParts.push(block.text);
+        } else if (block.type === "tool_result" && block.tool_use_id) {
+          // tool_result content can be string or array of {type, text}
+          let resultContent = "";
+          if (typeof block.content === "string") {
+            resultContent = block.content;
+          } else if (Array.isArray(block.content)) {
+            resultContent = block.content
+              .filter((c: ContentBlock) => c.type === "text" && c.text)
+              .map((c: ContentBlock) => c.text)
+              .join("\n");
+          }
           toolResults.push({
             toolCallId: block.tool_use_id,
-            content: block.content || "",
+            content: resultContent,
             isError: block.is_error,
           });
         }
+      }
+
+      if (textParts.length > 0) {
+        message.content = textParts.join("\n\n");
       }
       if (toolResults.length > 0) {
         message.toolResults = toolResults;
