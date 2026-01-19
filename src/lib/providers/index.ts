@@ -98,3 +98,6 @@ export async function getUnifiedProjects(): Promise<UnifiedProject[]> {
 
 // Export individual providers
 export { claudeProvider, codexProvider, codeProvider, opencodeProvider };
+
+// Export search functions
+export { searchMessages, getSearchableProviders, getSearchableProjects } from "./search";
