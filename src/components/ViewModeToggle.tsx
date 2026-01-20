@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type ViewMode = "tools" | "projects" | "search";
+type ViewMode = "tools" | "projects" | "search" | "stats";
 
 export default function ViewModeToggle() {
   const pathname = usePathname();
@@ -13,6 +13,8 @@ export default function ViewModeToggle() {
     ? "projects"
     : pathname.startsWith("/search")
     ? "search"
+    : pathname.startsWith("/stats")
+    ? "stats"
     : "tools";
 
   return (
@@ -46,6 +48,16 @@ export default function ViewModeToggle() {
         }`}
       >
         Search
+      </Link>
+      <Link
+        href="/stats"
+        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+          currentMode === "stats"
+            ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+            : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+        }`}
+      >
+        Stats
       </Link>
     </div>
   );
