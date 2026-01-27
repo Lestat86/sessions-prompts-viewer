@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getUnifiedProjects } from "@/lib/providers";
 import ViewModeToggle from "@/components/ViewModeToggle";
+import ProjectPath from "@/components/ProjectPath";
 
 export const dynamic = "force-dynamic";
 
@@ -62,9 +63,9 @@ export default async function ProjectsPage() {
                           ))}
                         </div>
                       </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-1">
-                        {project.path}
-                      </p>
+                      <div className="mt-1">
+                        <ProjectPath path={project.path} />
+                      </div>
                     </div>
                     <div className="flex items-center gap-4 ml-4 text-sm text-gray-500 dark:text-gray-400">
                       <span>{project.totalSessions} sessions</span>

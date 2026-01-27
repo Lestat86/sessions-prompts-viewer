@@ -4,6 +4,7 @@ import { getProvider, getAvailableProviders } from "@/lib/providers";
 import { ProviderId } from "@/types/providers";
 import ProviderTabs from "@/components/ProviderTabs";
 import ProviderChatView from "./ProviderChatView";
+import ProjectPath from "@/components/ProjectPath";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,11 @@ export default async function SessionPage({ params }: Props) {
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 line-clamp-1">
             {currentSession?.title || "Session"}
           </h1>
+          {currentProject?.path && (
+            <div className="mt-1">
+              <ProjectPath path={currentProject.path} />
+            </div>
+          )}
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {messages.length} messages
             {currentSession && (

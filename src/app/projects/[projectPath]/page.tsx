@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getUnifiedProjects, getProvider } from "@/lib/providers";
 import ViewModeToggle from "@/components/ViewModeToggle";
+import ProjectPath from "@/components/ProjectPath";
 
 export const dynamic = "force-dynamic";
 
@@ -52,9 +53,9 @@ export default async function ProjectDetailPage({ params }: Props) {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             {project.name}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2 font-mono text-sm">
-            {project.path}
-          </p>
+          <div className="mt-2">
+            <ProjectPath path={project.path} />
+          </div>
           <div className="flex items-center gap-2 mt-3">
             {project.providers.map((p) => (
               <span

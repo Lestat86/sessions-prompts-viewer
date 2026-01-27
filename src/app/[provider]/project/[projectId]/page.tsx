@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getProvider, getAvailableProviders } from "@/lib/providers";
 import { ProviderId } from "@/types/providers";
 import ProviderTabs from "@/components/ProviderTabs";
+import ProjectPath from "@/components/ProjectPath";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +43,9 @@ export default async function ProjectPage({ params }: Props) {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             {projectName}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm font-mono">
-            {currentProject?.path || decodedProjectId}
-          </p>
+          <div className="mt-1">
+            <ProjectPath path={currentProject?.path || decodedProjectId} />
+          </div>
         </header>
 
         <main className="max-w-4xl mx-auto">
