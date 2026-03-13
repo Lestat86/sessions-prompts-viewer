@@ -167,66 +167,21 @@ export const claudeProvider: IProvider = {
       const processedIds = new Set<string>();
 
       // 1. Read sessions-index.json for metadata (includes archived sessions)
+      // Use index data directly - no need to read .jsonl files for listing
       const index = await readSessionsIndex(projectDir);
       if (index?.entries) {
+        // Check which .jsonl files exist in bulk (one readdir, not per-entry stat)
+        const existingJsonlSet = new Set(
+          jsonlFiles.map((f) => f.replace(".jsonl", ""))
+        );
+
         for (const entry of index.entries) {
           if (entry.isSidechain) continue;
 
           processedIds.add(entry.sessionId);
-          const jsonlPath = path.join(
-            projectDir,
-            `${entry.sessionId}.jsonl`
-          );
-          const hasJsonl = await fileExists(jsonlPath);
+          const hasJsonl = existingJsonlSet.has(entry.sessionId);
 
-          // If we have the .jsonl, read extra details from it
-          let cwd: string | undefined;
-          let firstUserMessage: string | undefined;
-          let actualMessageCount = entry.messageCount;
-
-          if (hasJsonl) {
-            try {
-              const content = await fs.readFile(jsonlPath, "utf-8");
-              const lines = content.split("\n").filter(Boolean);
-              let count = 0;
-
-              for (const line of lines) {
-                try {
-                  const parsed: ClaudeSessionEntry = JSON.parse(line);
-                  if (
-                    parsed.type === "user" ||
-                    parsed.type === "assistant"
-                  ) {
-                    count++;
-                    if (!cwd && parsed.cwd) cwd = parsed.cwd;
-                    if (
-                      !firstUserMessage &&
-                      parsed.type === "user" &&
-                      parsed.message
-                    ) {
-                      if (typeof parsed.message.content === "string") {
-                        firstUserMessage = parsed.message.content.slice(
-                          0,
-                          200
-                        );
-                      }
-                    }
-                  }
-                } catch {
-                  // skip
-                }
-              }
-              if (count > 0) actualMessageCount = count;
-            } catch {
-              // fall back to index data
-            }
-          }
-
-          // Use index firstPrompt as fallback
-          if (!firstUserMessage && entry.firstPrompt) {
-            firstUserMessage = entry.firstPrompt.slice(0, 200);
-          }
-
+          const firstUserMessage = entry.firstPrompt?.slice(0, 200);
           const title =
             entry.summary ||
             firstUserMessage?.split("\n")[0]?.slice(0, 100) ||
@@ -239,8 +194,7 @@ export const claudeProvider: IProvider = {
             title,
             summary: entry.summary,
             firstMessage: firstUserMessage,
-            messageCount: actualMessageCount,
-            cwd,
+            messageCount: entry.messageCount,
             gitBranch: entry.gitBranch,
             createdAt: new Date(entry.created),
             lastModified: new Date(entry.modified),
@@ -250,62 +204,68 @@ export const claudeProvider: IProvider = {
       }
 
       // 2. Process any .jsonl files not in the index (legacy/orphaned)
-      for (const file of jsonlFiles) {
-        const sessionId = file.replace(".jsonl", "");
-        if (processedIds.has(sessionId)) continue;
+      const orphanedFiles = jsonlFiles.filter(
+        (f) => !processedIds.has(f.replace(".jsonl", ""))
+      );
 
-        const filePath = path.join(projectDir, file);
-        const stats = await fs.stat(filePath);
-        const content = await fs.readFile(filePath, "utf-8");
-        const lines = content.split("\n").filter(Boolean);
+      const orphanedSessions = await Promise.all(
+        orphanedFiles.map(async (file) => {
+          const sessionId = file.replace(".jsonl", "");
+          const filePath = path.join(projectDir, file);
+          const stats = await fs.stat(filePath);
+          const content = await fs.readFile(filePath, "utf-8");
+          const lines = content.split("\n").filter(Boolean);
 
-        let firstUserMessage: string | undefined;
-        let messageCount = 0;
-        let createdAt: Date | undefined;
-        let cwd: string | undefined;
-        let gitBranch: string | undefined;
+          let firstUserMessage: string | undefined;
+          let messageCount = 0;
+          let createdAt: Date | undefined;
+          let cwd: string | undefined;
+          let gitBranch: string | undefined;
 
-        for (const line of lines) {
-          try {
-            const entry: ClaudeSessionEntry = JSON.parse(line);
-            if (entry.type === "user" || entry.type === "assistant") {
-              messageCount++;
-              if (!createdAt && entry.timestamp) {
-                createdAt = new Date(entry.timestamp);
-              }
-              if (!cwd && entry.cwd) cwd = entry.cwd;
-              if (!gitBranch && entry.gitBranch) gitBranch = entry.gitBranch;
-              if (
-                !firstUserMessage &&
-                entry.type === "user" &&
-                entry.message
-              ) {
-                if (typeof entry.message.content === "string") {
-                  firstUserMessage = entry.message.content.slice(0, 200);
+          for (const line of lines) {
+            try {
+              const entry: ClaudeSessionEntry = JSON.parse(line);
+              if (entry.type === "user" || entry.type === "assistant") {
+                messageCount++;
+                if (!createdAt && entry.timestamp) {
+                  createdAt = new Date(entry.timestamp);
+                }
+                if (!cwd && entry.cwd) cwd = entry.cwd;
+                if (!gitBranch && entry.gitBranch) gitBranch = entry.gitBranch;
+                if (
+                  !firstUserMessage &&
+                  entry.type === "user" &&
+                  entry.message
+                ) {
+                  if (typeof entry.message.content === "string") {
+                    firstUserMessage = entry.message.content.slice(0, 200);
+                  }
                 }
               }
+            } catch {
+              // skip
             }
-          } catch {
-            // skip
           }
-        }
 
-        sessions.push({
-          id: sessionId,
-          providerId: "claude",
-          projectId,
-          title:
-            firstUserMessage?.split("\n")[0]?.slice(0, 100) ||
-            "Untitled Session",
-          firstMessage: firstUserMessage,
-          messageCount,
-          cwd,
-          gitBranch,
-          createdAt: createdAt || stats.birthtime,
-          lastModified: stats.mtime,
-          isArchived: false,
-        });
-      }
+          return {
+            id: sessionId,
+            providerId: "claude" as const,
+            projectId,
+            title:
+              firstUserMessage?.split("\n")[0]?.slice(0, 100) ||
+              "Untitled Session",
+            firstMessage: firstUserMessage,
+            messageCount,
+            cwd,
+            gitBranch,
+            createdAt: createdAt || stats.birthtime,
+            lastModified: stats.mtime,
+            isArchived: false,
+          };
+        })
+      );
+
+      sessions.push(...orphanedSessions);
 
       return sessions.sort(
         (a, b) => b.lastModified.getTime() - a.lastModified.getTime()

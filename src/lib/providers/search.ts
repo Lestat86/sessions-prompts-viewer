@@ -1,6 +1,11 @@
 import { SearchFilters, SearchResult, SearchResponse } from "@/types/search";
 import { ProviderId, ProviderMessage } from "@/types/providers";
-import { claudeProvider, codexProvider, codeProvider, opencodeProvider } from "./index";
+import {
+  claudeProvider,
+  codexProvider,
+  codeProvider,
+  opencodeProvider,
+} from "./index";
 
 const providers = [claudeProvider, codexProvider, codeProvider, opencodeProvider];
 
@@ -47,14 +52,14 @@ export function generateSnippet(
 }
 
 /**
- * Search through all messages across all providers
+ * Search through all messages across all providers.
+ * Parallelized across providers and projects for speed.
  */
 export async function searchMessages(
   filters: SearchFilters,
   limit: number = 50,
   offset: number = 0
 ): Promise<SearchResponse> {
-  const results: SearchResult[] = [];
   const regex = wildcardToRegex(filters.query);
 
   // Filter providers if specified
@@ -62,83 +67,120 @@ export async function searchMessages(
     ? providers.filter((p) => filters.providers!.includes(p.id))
     : providers;
 
-  for (const provider of providersToSearch) {
-    const available = await provider.isAvailable();
-    if (!available) continue;
+  // Run all providers in parallel
+  const providerResults = await Promise.all(
+    providersToSearch.map(async (provider) => {
+      const available = await provider.isAvailable();
+      if (!available) return [];
 
-    const projects = await provider.getProjects();
+      const projects = await provider.getProjects();
 
-    // Filter projects if specified
-    const projectsToSearch = filters.projects
-      ? projects.filter((p) => filters.projects!.includes(p.id))
-      : projects;
+      const projectsToSearch = filters.projects
+        ? projects.filter((p) => filters.projects!.includes(p.id))
+        : projects;
 
-    for (const project of projectsToSearch) {
-      const sessions = await provider.getSessions(project.id);
+      // Run all projects in parallel
+      const projectResults = await Promise.all(
+        projectsToSearch.map(async (project) => {
+          const sessions = await provider.getSessions(project.id);
+          const results: SearchResult[] = [];
 
-      for (const session of sessions) {
-        // Check date range filter at session level for efficiency
-        if (filters.dateRange) {
-          if (filters.dateRange.from && session.lastModified < filters.dateRange.from) {
-            continue;
-          }
-          if (filters.dateRange.to && session.createdAt > filters.dateRange.to) {
-            continue;
-          }
-        }
+          // Run all sessions in parallel
+          const sessionResults = await Promise.all(
+            sessions.map(async (session) => {
+              // Check date range filter at session level for efficiency
+              if (filters.dateRange) {
+                if (
+                  filters.dateRange.from &&
+                  session.lastModified < filters.dateRange.from
+                ) {
+                  return [];
+                }
+                if (
+                  filters.dateRange.to &&
+                  session.createdAt > filters.dateRange.to
+                ) {
+                  return [];
+                }
+              }
 
-        const messages = await provider.getMessages(project.id, session.id);
+              const messages = await provider.getMessages(
+                project.id,
+                session.id
+              );
+              const sessionResults: SearchResult[] = [];
 
-        for (const message of messages) {
-          // Filter by author
-          if (filters.authors && filters.authors.length > 0) {
-            if (!filters.authors.includes(message.role as "user" | "assistant")) {
-              continue;
-            }
-          }
+              for (const message of messages) {
+                // Filter by author
+                if (filters.authors && filters.authors.length > 0) {
+                  if (
+                    !filters.authors.includes(
+                      message.role as "user" | "assistant"
+                    )
+                  ) {
+                    continue;
+                  }
+                }
 
-          // Filter by date range at message level
-          if (filters.dateRange) {
-            if (filters.dateRange.from && message.timestamp < filters.dateRange.from) {
-              continue;
-            }
-            if (filters.dateRange.to && message.timestamp > filters.dateRange.to) {
-              continue;
-            }
-          }
+                // Filter by date range at message level
+                if (filters.dateRange) {
+                  if (
+                    filters.dateRange.from &&
+                    message.timestamp < filters.dateRange.from
+                  ) {
+                    continue;
+                  }
+                  if (
+                    filters.dateRange.to &&
+                    message.timestamp > filters.dateRange.to
+                  ) {
+                    continue;
+                  }
+                }
 
-          // Search in message content
-          const content = getMessageText(message);
-          regex.lastIndex = 0; // Reset regex state
-          const match = regex.exec(content);
+                // Search in message content
+                const content = getMessageText(message);
+                const localRegex = new RegExp(regex.source, regex.flags);
+                const match = localRegex.exec(content);
 
-          if (match) {
-            const { snippet, matchStart } = generateSnippet(
-              content,
-              match.index,
-              match[0].length
-            );
+                if (match) {
+                  const { snippet, matchStart } = generateSnippet(
+                    content,
+                    match.index,
+                    match[0].length
+                  );
 
-            results.push({
-              providerId: provider.id,
-              providerName: provider.name,
-              providerIcon: provider.icon,
-              projectId: project.id,
-              projectName: project.name,
-              sessionId: session.id,
-              messageId: message.id,
-              role: message.role as "user" | "assistant",
-              timestamp: message.timestamp,
-              snippet,
-              matchStart,
-              matchLength: match[0].length,
-              url: `/${provider.id}/project/${project.id}/session/${session.id}#msg-${message.id}`,
-            });
-          }
-        }
-      }
-    }
-  }
+                  sessionResults.push({
+                    providerId: provider.id,
+                    providerName: provider.name,
+                    providerIcon: provider.icon,
+                    projectId: project.id,
+                    projectName: project.name,
+                    sessionId: session.id,
+                    messageId: message.id,
+                    role: message.role as "user" | "assistant",
+                    timestamp: message.timestamp,
+                    snippet,
+                    matchStart,
+                    matchLength: match[0].length,
+                    url: `/${provider.id}/project/${project.id}/session/${session.id}#msg-${message.id}`,
+                  });
+                }
+              }
+
+              return sessionResults;
+            })
+          );
+
+          return sessionResults.flat();
+        })
+      );
+
+      return projectResults.flat();
+    })
+  );
+
+  const results = providerResults.flat();
 
   // Sort by timestamp descending (most recent first)
   results.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -174,16 +216,14 @@ function getMessageText(message: ProviderMessage): string {
 export async function getSearchableProviders(): Promise<
   { id: ProviderId; name: string; icon: string; available: boolean }[]
 > {
-  const result = [];
-  for (const provider of providers) {
-    const available = await provider.isAvailable();
-    result.push({
+  const result = await Promise.all(
+    providers.map(async (provider) => ({
       id: provider.id,
       name: provider.name,
       icon: provider.icon,
-      available,
-    });
-  }
+      available: await provider.isAvailable(),
+    }))
+  );
   return result;
 }
 
@@ -193,19 +233,18 @@ export async function getSearchableProviders(): Promise<
 export async function getSearchableProjects(): Promise<
   { id: string; name: string; providerId: ProviderId }[]
 > {
-  const result = [];
-  for (const provider of providers) {
-    const available = await provider.isAvailable();
-    if (!available) continue;
+  const allProjects = await Promise.all(
+    providers.map(async (provider) => {
+      const available = await provider.isAvailable();
+      if (!available) return [];
 
-    const projects = await provider.getProjects();
-    for (const project of projects) {
-      result.push({
+      const projects = await provider.getProjects();
+      return projects.map((project) => ({
         id: project.id,
         name: project.name,
         providerId: provider.id,
-      });
-    }
-  }
-  return result;
+      }));
+    })
+  );
+  return allProjects.flat();
 }
