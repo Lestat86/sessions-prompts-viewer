@@ -69,9 +69,16 @@ export default async function ProjectPage({ params }: Props) {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
-                        {session.title}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
+                          {session.title}
+                        </h3>
+                        {session.isArchived && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 shrink-0">
+                            Archived
+                          </span>
+                        )}
+                      </div>
                       {session.firstMessage &&
                         session.firstMessage !== session.title && (
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">

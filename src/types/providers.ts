@@ -25,6 +25,7 @@ export interface ProviderSession {
   providerId: ProviderId;
   projectId: string;
   title?: string;
+  summary?: string;
   firstMessage?: string;
   messageCount: number;
   cwd?: string;
@@ -32,6 +33,7 @@ export interface ProviderSession {
   gitBranch?: string;
   createdAt: Date;
   lastModified: Date;
+  isArchived?: boolean;
 }
 
 export interface ProviderMessage {
