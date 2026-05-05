@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChatMessage as ChatMessageType, MessageContent, ToolResultContent } from "@/types/claude";
 import { getTextContent } from "@/lib/utils";
+import CopyButton from "./CopyButton";
 
 interface Props {
   message: ChatMessageType;
@@ -21,6 +22,13 @@ export default function ChatMessage({ message }: Props) {
 
   // Check if this is a tool result message (user message with tool results)
   const isToolResultMessage = isUser && hasToolResults;
+
+  const copyText = buildCopyText({
+    text: textContent,
+    thinking: message.thinking,
+    toolCalls: message.toolCalls,
+    toolResults: message.toolResults as ToolResultContent[] | undefined,
+  });
 
   return (
     <div
@@ -58,13 +66,24 @@ export default function ChatMessage({ message }: Props) {
               {message.timestamp.toLocaleTimeString()}
             </span>
           </div>
-          <button
-            className={`text-xs ${
-              isUser ? "text-blue-200" : "text-gray-400 dark:text-gray-500"
-            } hover:underline`}
-          >
-            {isExpanded ? "▼ Collapse" : "▶ Expand"}
-          </button>
+          <div className="flex items-center gap-2">
+            <CopyButton
+              text={copyText}
+              title="Copy message to clipboard"
+              className={
+                isUser
+                  ? "text-blue-200 hover:text-white"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }
+            />
+            <button
+              className={`text-xs ${
+                isUser ? "text-blue-200" : "text-gray-400 dark:text-gray-500"
+              } hover:underline`}
+            >
+              {isExpanded ? "▼ Collapse" : "▶ Expand"}
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -168,6 +187,45 @@ export default function ChatMessage({ message }: Props) {
       </div>
     </div>
   );
+}
+
+function buildCopyText({
+  text,
+  thinking,
+  toolCalls,
+  toolResults,
+}: {
+  text: string;
+  thinking?: string;
+  toolCalls?: { name: string; input: unknown }[];
+  toolResults?: ToolResultContent[];
+}): string {
+  const parts: string[] = [];
+  if (text) parts.push(text);
+  if (thinking) parts.push(`[Thinking]\n${thinking}`);
+  if (toolCalls && toolCalls.length > 0) {
+    parts.push(
+      toolCalls
+        .map((t) => `[Tool Call: ${t.name}]\n${JSON.stringify(t.input, null, 2)}`)
+        .join("\n\n")
+    );
+  }
+  if (toolResults && toolResults.length > 0) {
+    parts.push(
+      toolResults
+        .map((r) => {
+          const c =
+            r.content == null
+              ? "(no content)"
+              : typeof r.content === "string"
+              ? r.content
+              : JSON.stringify(r.content, null, 2);
+          return `[Tool Result${r.is_error ? " (error)" : ""}]\n${c}`;
+        })
+        .join("\n\n")
+    );
+  }
+  return parts.join("\n\n");
 }
 
 function FormattedContent({ content }: { content: string }) {

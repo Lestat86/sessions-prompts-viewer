@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ProviderMessage } from "@/types/providers";
+import CopyButton from "./CopyButton";
 
 interface Props {
   message: ProviderMessage;
@@ -17,6 +18,8 @@ export default function ProviderChatMessage({ message }: Props) {
   const hasToolCalls = message.toolCalls && message.toolCalls.length > 0;
   const hasToolResults = message.toolResults && message.toolResults.length > 0;
   const isToolResultMessage = isUser && hasToolResults;
+
+  const copyText = buildCopyText(message);
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
@@ -56,13 +59,24 @@ export default function ProviderChatMessage({ message }: Props) {
               {message.timestamp.toLocaleTimeString()}
             </span>
           </div>
-          <button
-            className={`text-xs ${
-              isUser ? "text-blue-200" : "text-gray-400 dark:text-gray-500"
-            } hover:underline`}
-          >
-            {isExpanded ? "▼ Collapse" : "▶ Expand"}
-          </button>
+          <div className="flex items-center gap-2">
+            <CopyButton
+              text={copyText}
+              title="Copy message to clipboard"
+              className={
+                isUser
+                  ? "text-blue-200 hover:text-white"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }
+            />
+            <button
+              className={`text-xs ${
+                isUser ? "text-blue-200" : "text-gray-400 dark:text-gray-500"
+              } hover:underline`}
+            >
+              {isExpanded ? "▼ Collapse" : "▶ Expand"}
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -165,6 +179,32 @@ export default function ProviderChatMessage({ message }: Props) {
       </div>
     </div>
   );
+}
+
+function buildCopyText(message: ProviderMessage): string {
+  const parts: string[] = [];
+  if (message.content) parts.push(message.content);
+  if (message.thinking) parts.push(`[Thinking]\n${message.thinking}`);
+  if (message.toolCalls && message.toolCalls.length > 0) {
+    parts.push(
+      message.toolCalls
+        .map((t) => `[Tool Call: ${t.name}]\n${JSON.stringify(t.input, null, 2)}`)
+        .join("\n\n")
+    );
+  }
+  if (message.toolResults && message.toolResults.length > 0) {
+    parts.push(
+      message.toolResults
+        .map(
+          (r) =>
+            `[Tool Result${r.isError ? " (error)" : ""}]\n${
+              r.content || "(no content)"
+            }`
+        )
+        .join("\n\n")
+    );
+  }
+  return parts.join("\n\n");
 }
 
 function FormattedContent({ content }: { content: string }) {
